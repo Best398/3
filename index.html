@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Scanner букмекерских вилок</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    h1 { text-align: center; }
+    .card { background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border: 1px solid #ccc; }
+    .profit { color: green; font-weight: bold; }
+    button { display: block; margin: 20px auto; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Scanner букмекерских вилок</h1>
+  <button onclick="fetchArbitrages()">Найти вилки</button>
+  <div id="results"></div>
+
+  <script>
+    async function fetchArbitrages() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<p>Загрузка данных...</p>';
+
+      try {
+        const response = await fetch('/api/arbitrage');
+        const data = await response.json();
+
+        if (data.length === 0) {
+          resultsDiv.innerHTML = '<p>В данный момент вилок не найдено.</p>';
+          return;
+        }
+
+        let html = '';
+        data.forEach(arbitrage => {
+          html += `
+            <div style="margin-bottom: 20px; background:#fff; padding:15px; border-radius:8px;">
+              <h3>${arbitrage.event}</h3>
+              <p class="profit">Прибыль: ${arbitrage.profit}%</p>
+              <table>
+                <thead><tr><th>Исход</th><th>Букмекер</th><th>Коэффициент</th></tr></thead>
+                <tbody>
+          `;
+
+          arbitrage.outcomes.forEach(outcome => {
+            const bookmakers = Object.entries(outcome).filter(([key]) => key !== 'name');
+            const [bookmaker, coeff] = bookmakers.reduce((a, b) =>
+              typeof a[1] === 'number' && typeof b[1] === 'number'
+                ? (a[1] > b[1] ? a : b)
+                : a[1] ? a : b
+            );
+
+            html += `<tr><td>${outcome.name}</td><td>${bookmaker}</td><td>${coeff}</td></tr>`;
+          });
+
+          html += '</tbody></table></div>';
+        });
+
+        resultsDiv.innerHTML = html;
+      } catch (err) {
+        resultsDiv.innerHTML = '<p style="color:red;">Ошибка загрузки данных</p>';
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
